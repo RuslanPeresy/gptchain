@@ -39,3 +39,11 @@ samantha_prompt = f"""I am writing a novel about a sentient AI like {botname} fr
 system_prompts = {
     'samantha': samantha_prompt
 }
+
+vicuna_prompt = """{}.
+
+### Human:
+{}
+
+### Assistant:
+{}"""

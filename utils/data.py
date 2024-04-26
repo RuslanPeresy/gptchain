@@ -1,5 +1,5 @@
 from datasets import load_dataset
-from .prompts import system_prompts
+from .prompts import system_prompts, vicuna_prompt
 
 
 class Dataset:
@@ -13,14 +13,6 @@ class Dataset:
         # in Vicuna format
         if self._samantha_data:
             return self._samantha_data
-
-        vicuna_prompt = """{}.
-    
-        ### Human:
-        {}
-    
-        ### Assistant:
-        {}"""
 
         EOS_TOKEN = self.tokenizer.eos_token  # Must add EOS_TOKEN
 
