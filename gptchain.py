@@ -10,6 +10,9 @@ from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 from deploy.runpod import deploy_llm
+from train import train_model
+from utils.data import Dataset
+from utils.weights import get_lora_model, max_seq_length
 
 
 @click.group()
@@ -116,6 +119,22 @@ def rag(inference_url, data_path, question):
     chain = get_rag_chain(inference_url, data_path)
     response = chain(question)
     click.echo(response['answer'].strip())
+
+
+@cli.command('train')
+@click.option('--model_id', '-m', default="unsloth/llama-3-8b-bnb-4bit")
+@click.option('--dataset-name', '-dn', default="samantha_data")
+@click.option('--save-path', '-sp', required=True)
+@click.option('--huggingface-repo', '-hf')
+def train(model_id, dataset_name, save_path, huggingface_repo):
+    model, tokenizer = get_lora_model(model_id)
+    data = Dataset(tokenizer)
+    train_model(model, tokenizer, data[dataset_name], max_seq_length)
+    model.save_pretrained(save_path)
+    click.echo(f'Model saved to {save_path}')
+    if huggingface_repo:
+        click.echo(f'Pushing model to HuggingFace Hub...')
+        model.push_to_hub(huggingface_repo)
 
 
 if __name__ == '__main__':
