@@ -143,10 +143,10 @@ def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_ep
         train_args['max_steps'] = max_steps
     train_model(model, tokenizer, data[dataset_name], max_seq_length, train_args)
     model.save_pretrained(save_path)
-    click.echo(f'Model saved to {save_path}')
+    click.echo(f'LoRA adapters saved to {save_path}')
     if huggingface_repo:
         click.echo(f'Pushing model to HuggingFace Hub...')
-        model.push_to_hub(huggingface_repo)
+        model.push_to_hub_merged(huggingface_repo, tokenizer, save_method="merged_16bit")
 
 
 @cli.command('chat')
