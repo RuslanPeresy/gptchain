@@ -50,3 +50,9 @@ alpaca_prompt = """Below is an instruction that describes a task, paired with an
 
 ### Response:
 {}"""
+
+vicuna_prompt = """{}
+### Input:
+{}
+### Response:
+{}"""

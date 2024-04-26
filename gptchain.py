@@ -14,7 +14,7 @@ from deploy.runpod import deploy_llm
 from train import train_model
 from utils.data import Dataset
 from utils.weights import load_model_4bit, apply_lora, max_seq_length
-from utils.prompts import system_prompts, alpaca_prompt
+from utils.prompts import system_prompts, alpaca_prompt, vicuna_prompt
 
 
 @click.group()
@@ -129,10 +129,12 @@ def rag(inference_url, data_path, question):
 @click.option('--save-path', '-sp', required=True)
 @click.option('--huggingface-repo', '-hf')
 @click.option('--max-steps', '-ms', default=60)
-@click.option('--num-epochs', '-ne', help='Number of training epoches, max-steps will be ignored')
-def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs):
+@click.option('--num-epochs', '-ne', type=int, help='Number of training epoches, max-steps will be ignored')
+@click.option('--no-lora', '-nl', type=bool, help='Apply/do not apply LoRA')
+def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs, no_lora):
     model, tokenizer = load_model_4bit(model_id)
-    model = apply_lora(model)
+    if not no_lora:
+        model = apply_lora(model)
     data = Dataset(tokenizer)
     train_args = {}
     if num_epochs:
@@ -155,7 +157,7 @@ def chat(model_id, question):
     FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
     inputs = tokenizer(
         [
-            alpaca_prompt.format(
+            vicuna_prompt.format(
                 system_prompts['samantha'],  # system
                 question,  # input
                 "",  # output - leave this blank for generation!
