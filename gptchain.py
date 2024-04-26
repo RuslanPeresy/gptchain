@@ -138,7 +138,7 @@ def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_ep
     if num_epochs:
         train_args['num_train_epochs'] = num_epochs
     else:
-        train_args['max_steps']: max_steps
+        train_args['max_steps'] = max_steps
     train_model(model, tokenizer, data[dataset_name], max_seq_length, train_args)
     model.save_pretrained(save_path)
     click.echo(f'Model saved to {save_path}')
