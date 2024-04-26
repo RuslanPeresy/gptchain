@@ -4,7 +4,7 @@ from trl import SFTTrainer
 from transformers import TrainingArguments
 
 
-def train_model(model, tokenizer, dataset, max_seq_length):
+def train_model(model, tokenizer, dataset, max_seq_length, train_args):
 
     trainer = SFTTrainer(
         model=model,
@@ -18,7 +18,6 @@ def train_model(model, tokenizer, dataset, max_seq_length):
             per_device_train_batch_size=2,
             gradient_accumulation_steps=4,
             warmup_steps=5,
-            max_steps=60,
             learning_rate=2e-4,
             fp16=not torch.cuda.is_bf16_supported(),
             bf16=torch.cuda.is_bf16_supported(),
@@ -28,6 +27,7 @@ def train_model(model, tokenizer, dataset, max_seq_length):
             lr_scheduler_type="linear",
             seed=3407,
             output_dir="outputs",
+            **train_args
         ),
     )
 

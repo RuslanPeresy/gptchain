@@ -128,11 +128,17 @@ def rag(inference_url, data_path, question):
 @click.option('--dataset-name', '-dn', default="samantha_data")
 @click.option('--save-path', '-sp', required=True)
 @click.option('--huggingface-repo', '-hf')
-def train(model_id, dataset_name, save_path, huggingface_repo):
+@click.option('--max-steps', '-ms', default=60)
+@click.option('--num-epochs', '-ne', help='Number of training epoches, max-steps will be ignored')
+def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs):
     model, tokenizer = load_model_4bit(model_id)
     model = apply_lora(model)
     data = Dataset(tokenizer)
-    train_model(model, tokenizer, data[dataset_name], max_seq_length)
+    train_args = {
+        'max_steps': max_steps if not num_epochs else None,
+        'num_train_epochs': num_epochs
+    }
+    train_model(model, tokenizer, data[dataset_name], max_seq_length, train_args)
     model.save_pretrained(save_path)
     click.echo(f'Model saved to {save_path}')
     if huggingface_repo:
