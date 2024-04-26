@@ -14,7 +14,7 @@ from deploy.runpod import deploy_llm
 from train import train_model
 from utils.data import Dataset
 from utils.weights import load_model_4bit, apply_lora, max_seq_length
-from utils.prompts import system_prompts, vicuna_prompt
+from utils.prompts import system_prompts, alpaca_prompt
 
 
 @click.group()
@@ -148,7 +148,7 @@ def chat(model_id, question):
     FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
     inputs = tokenizer(
         [
-            vicuna_prompt.format(
+            alpaca_prompt.format(
                 system_prompts['samantha'],  # system
                 question,  # input
                 "",  # output - leave this blank for generation!
@@ -156,7 +156,8 @@ def chat(model_id, question):
         ], return_tensors="pt").to("cuda")
 
     outputs = model.generate(**inputs, max_new_tokens=64, use_cache=True)
-    tokenizer.batch_decode(outputs)
+    results = tokenizer.batch_decode(outputs)
+    click.echo(results[0].split('### Assistant:')[-1].strip())
 
 
 if __name__ == '__main__':
