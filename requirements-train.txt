@@ -1,0 +1,6 @@
+-r requirements.txt
+accelerate==0.29.3
+bitsandbytes==0.43.1
+peft==0.10.0
+trl==0.8.6
+xformers==0.0.25.post1

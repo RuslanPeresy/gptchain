@@ -8,8 +8,13 @@ from langchain.llms import LlamaCpp, HuggingFaceTextGenInference
 from langchain.prompts import PromptTemplate
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from unsloth import FastLanguageModel
 
 from deploy.runpod import deploy_llm
+from train import train_model
+from utils.data import Dataset
+from utils.weights import load_model_4bit, apply_lora, max_seq_length
+from utils.prompts import system_prompts, alpaca_prompt, vicuna_prompt
 
 
 @click.group()
@@ -116,6 +121,52 @@ def rag(inference_url, data_path, question):
     chain = get_rag_chain(inference_url, data_path)
     response = chain(question)
     click.echo(response['answer'].strip())
+
+
+@cli.command('train')
+@click.option('--model_id', '-m', default="unsloth/llama-3-8b-bnb-4bit", help='HF id or path to checkpoint')
+@click.option('--dataset-name', '-dn', default="samantha_data")
+@click.option('--save-path', '-sp', required=True)
+@click.option('--huggingface-repo', '-hf')
+@click.option('--max-steps', '-ms', default=60)
+@click.option('--num-epochs', '-ne', type=int, help='Number of training epoches, max-steps will be ignored')
+@click.option('--no-lora', '-nl', type=bool, help='Apply/do not apply LoRA')
+def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs, no_lora):
+    model, tokenizer = load_model_4bit(model_id)
+    if not no_lora:
+        model = apply_lora(model)
+    data = Dataset(tokenizer)
+    train_args = {}
+    if num_epochs:
+        train_args['num_train_epochs'] = num_epochs
+    else:
+        train_args['max_steps'] = max_steps
+    train_model(model, tokenizer, data[dataset_name], max_seq_length, train_args)
+    model.save_pretrained(save_path)
+    click.echo(f'LoRA adapters saved to {save_path}')
+    if huggingface_repo:
+        click.echo(f'Pushing model to HuggingFace Hub...')
+        model.push_to_hub_merged(huggingface_repo, tokenizer, save_method="merged_16bit")
+
+
+@cli.command('chat')
+@click.option('model_id', '-m', required=True, help='HF id or path to checkpoint')
+@click.option('--question', '-q', required=True)
+def chat(model_id, question):
+    model, tokenizer = load_model_4bit(model_id)
+    FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
+    inputs = tokenizer(
+        [
+            alpaca_prompt.format(
+                system_prompts['samantha'],  # system
+                question,  # input
+                "",  # output - leave this blank for generation!
+            )
+        ], return_tensors="pt").to("cuda")
+
+    outputs = model.generate(**inputs, max_new_tokens=512, use_cache=True)
+    results = tokenizer.batch_decode(outputs)
+    click.echo(results[0].split('### Response:')[-1].strip())
 
 
 if __name__ == '__main__':
