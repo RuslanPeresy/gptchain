@@ -130,7 +130,7 @@ def rag(inference_url, data_path, question):
 @click.option('--huggingface-repo', '-hf')
 @click.option('--max-steps', '-ms', default=60)
 @click.option('--num-epochs', '-ne', type=int, help='Number of training epoches, max-steps will be ignored')
-@click.option('--lora', '-lr', type=bool, help='Apply/do not apply LoRA')
+@click.option('--lora', '-lr', type=bool, default=True, help='Apply/do not apply LoRA')
 def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs, lora):
     model, tokenizer = load_model_4bit(model_id)
     if lora:
