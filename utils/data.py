@@ -1,4 +1,6 @@
 from datasets import load_dataset
+from unsloth.chat_templates import get_chat_template
+
 from .prompts import system_prompts, alpaca_prompt, vicuna_prompt
 
 
@@ -6,6 +8,7 @@ class Dataset:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
         self._samantha_data = None
+        self._tagengo_gpt4 = None
 
     @property
     def samantha_data(self):
@@ -29,6 +32,31 @@ class Dataset:
         dataset = load_dataset('wangqi777/samantha-data', 'en', split='train')
         self._samantha_data = dataset.map(formatting_prompts_func, batched=True)
         return self._samantha_data
+
+    @property
+    def tagengo_gpt4(self):
+        # Tagengo - the world's largest high quality multilingual chat dataset
+        # https://huggingface.co/datasets/lightblue/tagengo-gpt4
+        if self._tagengo_gpt4:
+            return self._tagengo_gpt4
+
+        tokenizer = get_chat_template(
+            self.tokenizer,
+            chat_template="chatml",  # Supports zephyr, chatml, mistral, llama, alpaca, vicuna, vicuna_old, unsloth
+            mapping={"role": "from", "content": "value", "user": "human", "assistant": "gpt"},  # ShareGPT style
+            map_eos_token=True,  # Maps <|im_end|> to </s> instead
+        )
+
+        def formatting_prompts_func(examples):
+            convos = examples["conversations"]
+            texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) for convo in
+                     convos]
+            return {"text": texts, }
+
+        dataset = load_dataset("lightblue/tagengo-gpt4", split="train")
+        dataset = dataset.filter(lambda x: x["response"][1] == "stop")
+        self._tagengo_gpt4 = dataset.map(formatting_prompts_func, batched=True)
+        return self._tagengo_gpt4
 
     def __getitem__(self, dataset_id):
         return getattr(self, dataset_id)
