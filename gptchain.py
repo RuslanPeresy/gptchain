@@ -1,6 +1,7 @@
 import json
 
 import click
+from transformers import TextStreamer
 from langchain.document_loaders import TextLoader
 from langchain.indexes import VectorstoreIndexCreator
 from langchain.chat_models import ChatOpenAI
@@ -184,9 +185,8 @@ def chat(model_id, question, chatml):
                 )
             ], return_tensors="pt").to("cuda")
 
-    outputs = model.generate(**inputs, max_new_tokens=512, use_cache=True)
-    results = tokenizer.batch_decode(outputs)
-    click.echo(results[0].split('### Response:')[-1].strip())
+    text_streamer = TextStreamer(tokenizer)
+    _ = model.generate(input_ids=inputs, streamer=text_streamer, max_new_tokens=512, use_cache=True)
 
 
 if __name__ == '__main__':
