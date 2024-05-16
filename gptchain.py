@@ -1,3 +1,5 @@
+import json
+
 import click
 from langchain.document_loaders import TextLoader
 from langchain.indexes import VectorstoreIndexCreator
@@ -9,6 +11,7 @@ from langchain.prompts import PromptTemplate
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from unsloth import FastLanguageModel
+from unsloth.chat_templates import get_chat_template
 
 from deploy.runpod import deploy_llm
 from train import train_model
@@ -152,17 +155,34 @@ def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_ep
 @cli.command('chat')
 @click.option('model_id', '-m', required=True, help='HF id or path to checkpoint')
 @click.option('--question', '-q', required=True)
-def chat(model_id, question):
+@click.option('--chatml', type=bool)
+def chat(model_id, question, chatml):
     model, tokenizer = load_model_4bit(model_id)
     FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
-    inputs = tokenizer(
-        [
-            alpaca_prompt.format(
-                system_prompts['samantha'],  # system
-                question,  # input
-                "",  # output - leave this blank for generation!
-            )
-        ], return_tensors="pt").to("cuda")
+
+    if chatml:
+        tokenizer = get_chat_template(
+            tokenizer,
+            chat_template="chatml",  # Supports zephyr, chatml, mistral, llama, alpaca, vicuna, vicuna_old, unsloth
+            mapping={"role": "from", "content": "value", "user": "human", "assistant": "gpt"},  # ShareGPT style
+            map_eos_token=True,  # Maps <|im_end|> to </s> instead
+        )
+        messages = json.loads(question)
+        inputs = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,  # Must add for generation
+            return_tensors="pt",
+        ).to("cuda")
+    else:
+        inputs = tokenizer(
+            [
+                alpaca_prompt.format(
+                    system_prompts['samantha'],  # system
+                    question,  # input
+                    "",  # output - leave this blank for generation!
+                )
+            ], return_tensors="pt").to("cuda")
 
     outputs = model.generate(**inputs, max_new_tokens=512, use_cache=True)
     results = tokenizer.batch_decode(outputs)
