@@ -189,5 +189,18 @@ def chat(model_id, question, chatml):
     _ = model.generate(input_ids=inputs, streamer=text_streamer, max_new_tokens=512, use_cache=True)
 
 
+@cli.command('quant')
+@click.option('model_id', '-m', required=True, help='HF id or path to checkpoint')
+@click.option('--method', '-qm', required=True,
+              help='Quantization method - https://github.com/unslothai/unsloth/wiki#saving-to-gguf')
+@click.option('--save-path', '-sp', required=True)
+@click.option('--huggingface-repo', '-hf')
+def quant(model_id, method, save_path, huggingface_repo):
+    model, tokenizer = load_model_4bit(model_id)
+    model.save_pretrained_gguf(save_path, tokenizer, quantization_method=method)
+    if huggingface_repo:
+        model.push_to_hub_gguf(save_path, tokenizer, quantization_method=method)
+
+
 if __name__ == '__main__':
     cli()
