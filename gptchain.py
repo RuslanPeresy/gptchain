@@ -1,4 +1,7 @@
+import json
+
 import click
+from transformers import TextStreamer
 from langchain.document_loaders import TextLoader
 from langchain.indexes import VectorstoreIndexCreator
 from langchain.chat_models import ChatOpenAI
@@ -9,6 +12,7 @@ from langchain.prompts import PromptTemplate
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from unsloth import FastLanguageModel
+from unsloth.chat_templates import get_chat_template
 
 from deploy.runpod import deploy_llm
 from train import train_model
@@ -130,10 +134,10 @@ def rag(inference_url, data_path, question):
 @click.option('--huggingface-repo', '-hf')
 @click.option('--max-steps', '-ms', default=60)
 @click.option('--num-epochs', '-ne', type=int, help='Number of training epoches, max-steps will be ignored')
-@click.option('--no-lora', '-nl', type=bool, help='Apply/do not apply LoRA')
-def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs, no_lora):
+@click.option('--lora', '-lr', type=bool, default=True, help='Apply/do not apply LoRA')
+def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_epochs, lora):
     model, tokenizer = load_model_4bit(model_id)
-    if not no_lora:
+    if lora:
         model = apply_lora(model)
     data = Dataset(tokenizer)
     train_args = {}
@@ -152,21 +156,50 @@ def train(model_id, dataset_name, save_path, huggingface_repo, max_steps, num_ep
 @cli.command('chat')
 @click.option('model_id', '-m', required=True, help='HF id or path to checkpoint')
 @click.option('--question', '-q', required=True)
-def chat(model_id, question):
+@click.option('--chatml', type=bool)
+def chat(model_id, question, chatml):
     model, tokenizer = load_model_4bit(model_id)
     FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
-    inputs = tokenizer(
-        [
-            alpaca_prompt.format(
-                system_prompts['samantha'],  # system
-                question,  # input
-                "",  # output - leave this blank for generation!
-            )
-        ], return_tensors="pt").to("cuda")
 
-    outputs = model.generate(**inputs, max_new_tokens=512, use_cache=True)
-    results = tokenizer.batch_decode(outputs)
-    click.echo(results[0].split('### Response:')[-1].strip())
+    if chatml:
+        tokenizer = get_chat_template(
+            tokenizer,
+            chat_template="chatml",  # Supports zephyr, chatml, mistral, llama, alpaca, vicuna, vicuna_old, unsloth
+            mapping={"role": "from", "content": "value", "user": "human", "assistant": "gpt"},  # ShareGPT style
+            map_eos_token=True,  # Maps <|im_end|> to </s> instead
+        )
+        messages = json.loads(question)
+        inputs = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,  # Must add for generation
+            return_tensors="pt",
+        ).to("cuda")
+    else:
+        inputs = tokenizer(
+            [
+                alpaca_prompt.format(
+                    system_prompts['samantha'],  # system
+                    question,  # input
+                    "",  # output - leave this blank for generation!
+                )
+            ], return_tensors="pt").to("cuda")
+
+    text_streamer = TextStreamer(tokenizer)
+    _ = model.generate(input_ids=inputs, streamer=text_streamer, max_new_tokens=512, use_cache=True)
+
+
+@cli.command('quant')
+@click.option('model_id', '-m', required=True, help='HF id or path to checkpoint')
+@click.option('--method', '-qm', required=True,
+              help='Quantization method - https://github.com/unslothai/unsloth/wiki#saving-to-gguf')
+@click.option('--save-path', '-sp', required=True)
+@click.option('--huggingface-repo', '-hf')
+def quant(model_id, method, save_path, huggingface_repo):
+    model, tokenizer = load_model_4bit(model_id)
+    model.save_pretrained_gguf(save_path, tokenizer, quantization_method=method)
+    if huggingface_repo:
+        model.push_to_hub_gguf(save_path, tokenizer, quantization_method=method)
 
 
 if __name__ == '__main__':

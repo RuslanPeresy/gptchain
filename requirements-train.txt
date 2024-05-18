@@ -4,3 +4,4 @@ bitsandbytes==0.43.1
 peft==0.10.0
 trl==0.8.6
 xformers==0.0.25.post1
+wandb==0.17.0
