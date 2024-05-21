@@ -38,12 +38,25 @@ Run training session:
 
 ```
 python gptchain.py train -m unsloth/llama-3-70b-bnb-4bit \
-    --dataset-name tagengo_gpt4 \
-    --save-path checkpoints/llama-3-70b-tagengo \
-    --huggingface-repo llama-3-70b-tagengo \
-    --max-steps 2400
+	--dataset-name tagengo_gpt4 \
+	--save-path checkpoints/llama-3-70b-tagengo \
+	--huggingface-repo llama-3-70b-tagengo \
+	--max-steps 2400
 ```
 Here, the base model is `unsloth/llama-3-70b-bnb-4bit`, dataset is `tagengo_gpt4`, final checkpoint will be stored in `checkpoints/llama-3-70b-tagengo`, weights will be uploaded in the Huggingface repo `llama-3-70b-tagengo` under your namespace. Maximum training steps is 2400, you can pass `--num-epochs` argument instead to set the number of training epochs.
+
+## LLM quantization
+
+You can quantize your model and store it in `gguf` format.
+
+```
+python gptchain.py quant -m checkpoints/llama-3-70b-tagengo \
+	--method q4_k_m \
+	--save-path quants/llama-3-70b-tagengo \
+	--huggingface-repo llama-3-70b-tagengo-GGUF
+```
+
+Quantization method used here is `q4_k_m`. [All available options you can see here](https://github.com/unslothai/unsloth/wiki#3-gguf-conversion)
 
 # Usage
 1. Replace data.txt with your data.
