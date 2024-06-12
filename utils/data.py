@@ -42,7 +42,7 @@ class Dataset:
             return self._tagengo_gpt4
 
         dataset = load_dataset("lightblue/tagengo-gpt4", split="train")
-        dataset = dataset.filter(lambda x: x["response"][1] == "stop")
+        dataset = dataset.filter(lambda x: x['conversations'][1]["value"])
         self._tagengo_gpt4 = self._sharegpt_to_chatml(dataset)
         return self._tagengo_gpt4
 
@@ -52,6 +52,7 @@ class Dataset:
             return self._tagengo_subset_gpt4o
 
         dataset = load_dataset("ruslandev/tagengo-subset-gpt-4o", split="train")
+        dataset = dataset.filter(lambda x: x['conversations'][1]["value"])
         self._tagengo_subset_gpt4o = self._sharegpt_to_chatml(dataset)
         return self._tagengo_subset_gpt4o
 
