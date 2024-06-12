@@ -9,6 +9,7 @@ class Dataset:
         self.tokenizer = tokenizer
         self._samantha_data = None
         self._tagengo_gpt4 = None
+        self._tagengo_subset_gpt4o = None
 
     @property
     def samantha_data(self):
@@ -40,6 +41,22 @@ class Dataset:
         if self._tagengo_gpt4:
             return self._tagengo_gpt4
 
+        dataset = load_dataset("lightblue/tagengo-gpt4", split="train")
+        dataset = dataset.filter(lambda x: x['conversations'][1]["value"])
+        self._tagengo_gpt4 = self._sharegpt_to_chatml(dataset)
+        return self._tagengo_gpt4
+
+    @property
+    def tagengo_subset_gpt4o(self):
+        if self._tagengo_subset_gpt4o:
+            return self._tagengo_subset_gpt4o
+
+        dataset = load_dataset("ruslandev/tagengo-subset-gpt-4o", split="train")
+        dataset = dataset.filter(lambda x: x['conversations'][1]["value"])
+        self._tagengo_subset_gpt4o = self._sharegpt_to_chatml(dataset)
+        return self._tagengo_subset_gpt4o
+
+    def _sharegpt_to_chatml(self, dataset):
         tokenizer = get_chat_template(
             self.tokenizer,
             chat_template="chatml",  # Supports zephyr, chatml, mistral, llama, alpaca, vicuna, vicuna_old, unsloth
@@ -53,10 +70,7 @@ class Dataset:
                      convos]
             return {"text": texts, }
 
-        dataset = load_dataset("lightblue/tagengo-gpt4", split="train")
-        dataset = dataset.filter(lambda x: x["response"][1] == "stop")
-        self._tagengo_gpt4 = dataset.map(formatting_prompts_func, batched=True)
-        return self._tagengo_gpt4
+        return dataset.map(formatting_prompts_func, batched=True)
 
     def __getitem__(self, dataset_id):
         return getattr(self, dataset_id)
