@@ -56,6 +56,13 @@ class Dataset:
         self._tagengo_subset_gpt4o = self._sharegpt_to_chatml(dataset)
         return self._tagengo_subset_gpt4o
 
+    def get_sharegpt_dataset(self, dataset_id):
+        # ShareGPT-style dataset with columns names same as in https://huggingface.co/datasets/lightblue/tagengo-gpt4
+
+        dataset = load_dataset(dataset_id, split="train")
+        dataset = dataset.filter(lambda x: x['conversations'][1]["value"])
+        return self._sharegpt_to_chatml(dataset)
+
     def _sharegpt_to_chatml(self, dataset):
         tokenizer = get_chat_template(
             self.tokenizer,
@@ -73,4 +80,7 @@ class Dataset:
         return dataset.map(formatting_prompts_func, batched=True)
 
     def __getitem__(self, dataset_id):
-        return getattr(self, dataset_id)
+        try:
+            return getattr(self, dataset_id)
+        except AttributeError:
+            return self.get_sharegpt_dataset(dataset_id)
