@@ -1,0 +1,35 @@
+version = "1.0.0"
+description = "Framework to fine-tune LLMs and build RAG applications."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+dependencies = [
+    "click==8.1.7",
+    "python-dotenv==1.0.0"
+]
+
+[project.optional-dependencies]
+train = [
+    "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git",
+    "accelerate==0.29.3",
+    "bitsandbytes==0.43.1",
+    "peft==0.10.0",
+    "trl==0.8.6",
+    "xformers==0.0.25.post1",
+    "wandb==0.17.0"
+]
+rag = [
+    "langchain==0.0.222",
+    "chromadb==0.3.26",
+    "tiktoken==0.4.0",
+    "llama-cpp-python==0.1.77"
+]
+bot = ["python-telegram-bot==20.4"]
+
+[project.urls]
+"Homepage" = "https://github.com/RuslanPeresy/gptchain"
+"Bug Tracker" = "https://github.com/RuslanPeresy/gptchain/issues"
